@@ -1,0 +1,65 @@
+From 4ee9a5d88f0703f5a1ff53668f7bb38d06c9f3ad Mon Sep 17 00:00:00 2001
+From: Alexander Kanavin <alex.kanavin@gmail.com>
+Date: Sun, 28 Jun 2020 11:57:08 +0000
+Subject: [PATCH] dix/atom.c: make xserver crash out if memory cannot be
+ allocated
+
+This patch is made strictly for debugging an intermittent autobuilder failure.
+https://bugzilla.yoctoproject.org/show_bug.cgi?id=13908
+
+Upstream-Status: Inappropriate [oe-core specific]
+Signed-off-by: Alexander Kanavin <alex.kanavin@gmail.com>
+---
+ dix/atom.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/dix/atom.c b/dix/atom.c
+index da0adfe..32d57f8 100644
+--- a/dix/atom.c
++++ b/dix/atom.c
+@@ -70,6 +70,12 @@ static NodePtr atomRoot = NULL;
+ static unsigned long tableLength;
+ static NodePtr *nodeTable;
+ 
++void kaboom(char* msg)
++{
++    LogMessage(X_ERROR,"%s\n", msg);
++}
++
++
+ Atom
+ MakeAtom(const char *string, unsigned len, Bool makeit)
+ {
+@@ -98,12 +104,15 @@ MakeAtom(const char *string, unsigned len, Bool makeit)
+                 return (*np)->a;
+         }
+     }
++    //kaboom("error: makeatom failure 0");
+     if (makeit) {
+         NodePtr nd;
+ 
+         nd = malloc(sizeof(NodeRec));
+-        if (!nd)
++        if (!nd) {
++            kaboom("error: makeatom failure 1");
+             return BAD_RESOURCE;
++        }
+         if (lastAtom < XA_LAST_PREDEFINED) {
+             nd->string = string;
+         }
+@@ -111,6 +120,7 @@ MakeAtom(const char *string, unsigned len, Bool makeit)
+             nd->string = strndup(string, len);
+             if (!nd->string) {
+                 free(nd);
++                kaboom("error: makeatom failure 2");
+                 return BAD_RESOURCE;
+             }
+         }
+@@ -124,6 +134,7 @@ MakeAtom(const char *string, unsigned len, Bool makeit)
+                     free((char *) nd->string);
+                 }
+                 free(nd);
++                kaboom("error: makeatom failure 3");
+                 return BAD_RESOURCE;
+             }
+             tableLength <<= 1;
